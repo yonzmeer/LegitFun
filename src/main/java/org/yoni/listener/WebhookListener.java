@@ -8,12 +8,16 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.InputStream;
 import java.util.Optional;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import lombok.RequiredArgsConstructor;
 import org.yoni.models.WebhookEvent;
 import org.yoni.validators.WebHookEventValidators;
 
 @RequiredArgsConstructor
 public class WebhookListener implements HttpHandler {
+  private static final Logger LOGGER = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+
   private static final ObjectMapper OBJECT_MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -23,7 +27,10 @@ public class WebhookListener implements HttpHandler {
       return;
     }
 
+    LOGGER.fine("Got a POST request!");
     var requestBody = exchange.getRequestBody();
+    LOGGER.finer(String.format("Body is %s", requestBody));
+
     createWebhookEvent(requestBody).ifPresent(WebHookEventValidators::run);
   }
 
@@ -35,11 +42,14 @@ public class WebhookListener implements HttpHandler {
 
     var body = scanner.next();
     try {
-      // Deserialize JSON string to object
+      LOGGER.finer("Converting body to WeHookEvent");
+
       var webhookEvent = OBJECT_MAPPER.readValue(body, WebhookEvent.class);
 
       return Optional.of(webhookEvent);
     } catch (JsonProcessingException e) {
+      LOGGER.log(Level.SEVERE, "Failed to convert body", e);
+
       return Optional.empty();
     }
   }
